@@ -75,6 +75,14 @@ class SpyTimelineExtension extends Extension
         $filters       = isset($config['filters']) ? $config['filters'] : array();
         $filterManager = $container->getDefinition('spy_timeline.filter.manager');
 
+        if (isset($filters['aggregation'])) {
+            $filter  = $filters['aggregation'];
+            $service = $container->getDefinition($filter['service']);
+            $service->addMethodCall('setPriority', array($filter['priority']));
+
+            $filterManager->addMethodCall('add', array($service));
+        }
+
         if (isset($filters['duplicate_key'])) {
             $filter  = $filters['duplicate_key'];
             $service = $container->getDefinition($filter['service']);

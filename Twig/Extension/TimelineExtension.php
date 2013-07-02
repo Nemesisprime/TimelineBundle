@@ -79,6 +79,8 @@ class TimelineExtension extends \Twig_Extension
             'timeline' => new \Twig_Function_Method($this, 'renderContextualTimeline', array('is_safe' => array('html'))),
             'timeline_render' => new \Twig_Function_Method($this, 'renderTimeline', array('is_safe' => array('html'))),
             'timeline_component_render' => new \Twig_Function_Method($this, 'renderActionComponent', array('is_safe' => array('html'))),
+            'timeline_has_component_collection' => new \Twig_Function_Method($this, 'actionHasComponentCollection'),
+            'timeline_component_collection_render' => new \Twig_Function_Method($this, 'renderActionComponentCollection', array('is_safe' => array('html'))),
             'i18n_timeline_render' => new \Twig_Function_Method($this, 'renderLocalizedTimeline', array('is_safe' => array('html'))),
         );
     }
@@ -167,6 +169,107 @@ class TimelineExtension extends \Twig_Extension
     }
 
     /**
+     * @param TimelineInterface $action
+     * @param string $component
+     * @return boolean
+     */
+    public function actionHasComponentCollection($action, $component) 
+    { 
+        $action = $this->resolveAction($action, __METHOD__);
+        if($action->getComponentCollection($component))
+        { 
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Render an action's componentCollection
+     *
+     * @param  object  $action    action
+     * @param  string  $collection_component Component to render (subject, verb, etc ...)
+     * @param  array   $variables Additional variables to pass to templates
+     * @return string
+     */
+    public function renderActionComponentCollection($action, $component, array $variables = array())
+    {
+        $action = $this->resolveAction($action, __METHOD__);
+
+        if (null === $this->template) {
+            $this->template = reset($this->resources);
+            if (!$this->template instanceof \Twig_Template) {
+                $this->template = $this->twig->loadTemplate($this->template);
+            }
+        }
+
+        $componentVariables = $this->getComponentVariables($action, $component);
+        $componentVariables['type']   = $component;
+        $componentVariables['action'] = $action;
+        $componentVariables['value'] = $action->getComponentCollection($component);
+
+        $custom = false;
+        if (!empty($componentVariables['model'])) {
+            $custom = '_'.$componentVariables['normalized_model'];
+        }
+
+        $rendering = $custom.'_'.$component.'component_collection';
+        $blocks = $this->getBlocks($action);
+
+        if (isset($this->varStack[$rendering])) {
+            $typeIndex = $this->varStack[$rendering]['typeIndex'] - 1;
+            $types = $this->varStack[$rendering]['types'];
+            $this->varStack[$rendering]['variables'] = array_replace_recursive($componentVariables, $variables);
+        } else {
+
+            $types = array();
+            // fallback to __toString of component.
+            if ($component != 'action') {
+                $types[] = 'action';
+            }
+
+            $types[] = $component;
+
+            if ($custom) {
+                $types[] = $custom.'_default';
+                $types[] = $custom.'_'.$component;
+            }
+
+
+
+            $typeIndex = count($types) - 1;
+            $this->varStack[$rendering] = array (
+                'variables' => array_replace_recursive($componentVariables, $variables),
+                'types'     => $types,
+            );
+        }
+
+        do {
+            $types[$typeIndex] .= '_component_collection';
+
+            if (isset($blocks[$types[$typeIndex]])) {
+
+                $this->varStack[$rendering]['typeIndex'] = $typeIndex;
+
+                // we do not call renderBlock here to avoid too many nested level calls (XDebug limits the level to 100 by default)
+                ob_start();
+                $this->template->displayBlock($types[$typeIndex], $this->varStack[$rendering]['variables'], $blocks);
+                $html = ob_get_clean();
+
+                unset($this->varStack[$rendering]);
+
+                return $html;
+            }
+        } while (--$typeIndex >= 0);
+
+        throw new \Exception(sprintf(
+            'Unable to render the action component as none of the following blocks exist: "%s".',
+            implode('", "', array_reverse($types))
+        ));
+    }
+
+
+
+    /**
      * Render an action component
      *
      * @param  object  $action    action
@@ -177,6 +280,14 @@ class TimelineExtension extends \Twig_Extension
     public function renderActionComponent($action, $component, array $variables = array())
     {
         $action = $this->resolveAction($action, __METHOD__);
+
+        if($action->hasComponentCollection())
+        { 
+            if($action->getComponentCollection($component) != null) 
+            { 
+                //throw new \Exception("Calling $component returns an CollectionComponent, use timeline_component_collection_render to render.");
+            }
+        }
 
         if (null === $this->template) {
             $this->template = reset($this->resources);

@@ -5,20 +5,29 @@
     xsi:schemaLocation="http://symfony.com/schema/dic/services http://symfony.com/schema/dic/services/services-1.0.xsd">
 
     <parameters>
+        <parameter key="spy_timeline.aggregator.class">Spy\Timeline\Aggregation\Aggregator</parameter>
+    
         <parameter key="spy_timeline.filter.manager.class">Spy\Timeline\Filter\FilterManager</parameter>
         <parameter key="spy_timeline.filter.duplicate_key.class">Spy\Timeline\Filter\DuplicateKey</parameter>
         <parameter key="spy_timeline.filter.data_hydrator.class">Spy\Timeline\Filter\DataHydrator</parameter>
+        <parameter key="spy_timeline.filter.aggregation.class">Spy\Timeline\Filter\AggregationFilter</parameter>
         <parameter key="spy_timeline.filter.data_hydrator.locator.doctrine_orm.class">Spy\TimelineBundle\Filter\DataHydrator\Locator\DoctrineORM</parameter>
         <parameter key="spy_timeline.filter.data_hydrator.locator.doctrine_odm.class">Spy\TimelineBundle\Filter\DataHydrator\Locator\DoctrineODM</parameter>
     </parameters>
 
     <services>
         <service id="spy_timeline.filter.manager" class="%spy_timeline.filter.manager.class%" />
+        
+        <service id="spy_timeline.aggregator" class="%spy_timeline.aggregator.class%" />
 
         <!-- core filters -->
         <service id="spy_timeline.filter.duplicate_key" class="%spy_timeline.filter.duplicate_key.class%" />
 
         <service id="spy_timeline.filter.data_hydrator" class="%spy_timeline.filter.data_hydrator.class%" />
+        
+        <service id="spy_timeline.filter.aggregation" class="%spy_timeline.filter.aggregation.class%">
+            <argument type="service" id="spy_timeline.aggregator" on-invalid="null" />
+        </service>
 
         <!--- locators -->
         <service id="spy_timeline.filter.data_hydrator.locator.doctrine_orm" class="%spy_timeline.filter.data_hydrator.locator.doctrine_orm.class%">
