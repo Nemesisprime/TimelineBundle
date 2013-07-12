@@ -176,7 +176,7 @@ class TimelineExtension extends \Twig_Extension
     public function actionHasComponentCollection($action, $component) 
     { 
         $action = $this->resolveAction($action, __METHOD__);
-        if($action->getComponentCollection($component))
+        if($action->getComponentCollection($component) && count($action->getComponentCollection($component)) > 1)
         { 
             return true;
         }
